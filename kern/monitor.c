@@ -68,12 +68,12 @@ mon_backtrace(int argc, char **argv, struct Trapframe *tf)
 	ebp = read_ebp();
 	pebp = (uint32_t *) ebp;
 	while (pebp) {
-		eip = *(pebp + 1);
+		eip = pebp[1];
 		cprintf("  ebp %08x eip %08x ", ebp, eip);
 	
 		cprintf("args ");
 		for (i = 1; i <= 5; i++) {
-			cprintf("%08x ", *(pebp + 1 + i));
+			cprintf("%08x ", pebp[1 + i]);
 		}
 		cprintf("\n");
 
