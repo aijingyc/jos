@@ -10,6 +10,7 @@
 #include <kern/console.h>
 #include <kern/monitor.h>
 #include <kern/kdebug.h>
+#include <kern/pmap.h>
 
 #define CMDBUF_SIZE	80	// enough for one VGA text line
 
@@ -25,6 +26,7 @@ static struct Command commands[] = {
 	{ "help", "Display this list of commands", mon_help },
 	{ "kerninfo", "Display information about the kernel", mon_kerninfo },
 	{ "backtrace", "Display information about the backtrace", mon_backtrace },
+	{ "showmappings", "Display memory mappings for a range of virtual addresses", mon_showmappings },
 };
 #define NCOMMANDS (sizeof(commands)/sizeof(commands[0]))
 
@@ -84,11 +86,43 @@ mon_backtrace(int argc, char **argv, struct Trapframe *tf)
 
 		ebp = ((uint32_t *) ebp)[0];
 	}
-
 	return 0;
 }
 
+int
+mon_showmappings(int argc, char **argv, struct Trapframe *tf)
+{
+	int i;
+	uintptr_t va_arg[2], va;
+	pde_t *pgdir;
+	pte_t *pte;
 
+	if (argc != 3) {
+		cprintf("usage: showmappings begin_va end_va\n");
+		return 0;
+	}
+
+	for (i = 1; i < argc; i++) {
+		va_arg[i - 1] = (uintptr_t) strtol(argv[i], NULL, 0);
+	}
+
+	if (va_arg[0] > va_arg[1]) {
+		cprintf("begin va (0x%x) is greater than end va (0x%x)\n", va_arg[0], va_arg[1]);
+		return 0;
+	}
+
+	pgdir = (pde_t *) KADDR(rcr3());
+	for (va = va_arg[0]; va <= va_arg[1]; va += PGSIZE) {
+		pte = pgdir_walk(pgdir, (void *) va, 0);
+		if (!pte || !(*pte & PTE_P)) {
+			cprintf("va 0x%x is not mapped\n", va);
+			continue;
+		}
+
+		cprintf("va 0x%x: 0x%x PTE_P %d PTE_W %d PTE_U %d\n", va, PTE_ADDR(*pte), *pte & PTE_P, *pte & PTE_W, *pte & PTE_U);
+	}
+	return 0;
+}
 
 /***** Kernel monitor command interpreter *****/
 
