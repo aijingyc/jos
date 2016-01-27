@@ -213,7 +213,7 @@ mon_dumpvm(int argc, char **argv, struct Trapframe *tf)
 		if (!pte || !(*pte & PTE_P))
 			cprintf("virtual address 0x%x is not mapped yet\n", va);
 		else
-			cprintf("virtual address 0x%x: %c\n", va, *va);
+			cprintf("virtual address 0x%x: 0x%02x\n", va, (uint8_t) *va);
 
 		if (va + 1 < va)
 			break;
