@@ -191,7 +191,8 @@ mon_modpageperms(int argc, char **argv, struct Trapframe *tf)
 int
 mon_dumpvm(int argc, char **argv, struct Trapframe *tf)
 {
-	uintptr_t begin_va, end_va, va;
+	uintptr_t begin_va, end_va;
+	char *va;
 	pde_t *pgdir;
 	pte_t *pte;
 
@@ -203,17 +204,17 @@ mon_dumpvm(int argc, char **argv, struct Trapframe *tf)
 	begin_va = (uintptr_t) strtol(argv[1], NULL, 0);
 	end_va = (uintptr_t) strtol(argv[2], NULL, 0);
 	if (begin_va > end_va) {
-		cprintf("begin va 0x%x is greater than end va 0x%x\n", begin_va, end_va);
+		cprintf("begin va (0x%x) is greater than end va (0x%x)\n", begin_va, end_va);
 		return 0;
 	}
 
 	pgdir = (pde_t *) KADDR(rcr3());
-	for (va = begin_va; va <= end_va; va++) {
+	for (va = (char *) begin_va; va <= (char *) end_va; va++) {
 		pte = pgdir_walk(pgdir, (void *) va, 0);
 		if (!pte || !(*pte & PTE_P))
 			cprintf("virtual address 0x%x is not mapped yet\n", va);
 		else
-			cprintf("virtual address 0x%x: 0x%x\n", va, *((uint32_t *) va));
+			cprintf("virtual address 0x%x: 0x%02x\n", va, (uint8_t) *va);
 
 		if (va + 1 < va)
 			break;
