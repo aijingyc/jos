@@ -202,7 +202,7 @@ mon_dumpvm(int argc, char **argv, struct Trapframe *tf)
 	begin_va = (uintptr_t) strtol(argv[1], NULL, 0);
 	end_va = (uintptr_t) strtol(argv[2], NULL, 0);
 	if (begin_va > end_va) {
-		cprintf("begin va 0x%x is greater than end va 0x%x\n", begin_va, end_va);
+		cprintf("begin va (0x%x) is greater than end va (0x%x)\n", begin_va, end_va);
 		return 0;
 	}
 
