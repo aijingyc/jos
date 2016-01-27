@@ -10,6 +10,7 @@
 #include <kern/console.h>
 #include <kern/monitor.h>
 #include <kern/kdebug.h>
+#include <kern/pmap.h>
 #include <kern/trap.h>
 
 #define CMDBUF_SIZE	80	// enough for one VGA text line
@@ -25,6 +26,10 @@ struct Command {
 static struct Command commands[] = {
 	{ "help", "Display this list of commands", mon_help },
 	{ "kerninfo", "Display information about the kernel", mon_kerninfo },
+	{ "backtrace", "Display information about the backtrace", mon_backtrace },
+	{ "showmappings", "Display memory mappings for a range of virtual addresses", mon_showmappings },
+	{ "modpageperms", "Modify page permissions", mon_modpageperms },
+	{ "dumpvm", "Dump virtual memory content", mon_dumpvm },
 };
 #define NCOMMANDS (sizeof(commands)/sizeof(commands[0]))
 
@@ -60,10 +65,161 @@ int
 mon_backtrace(int argc, char **argv, struct Trapframe *tf)
 {
 	// Your code here.
+	uint32_t ebp, eip;
+	int i;
+
+	cprintf("Stack backtrace:\n");
+
+	ebp = read_ebp();
+	while (ebp) {
+		eip = ((uint32_t *) ebp)[1];
+		cprintf("  ebp %08x eip %08x ", ebp, eip);
+	
+		cprintf("args ");
+		for (i = 1; i <= 5; i++) {
+			cprintf("%08x ", ((uint32_t *) ebp)[1 + i]);
+		}
+		cprintf("\n");
+
+		struct Eipdebuginfo info;
+		if (!debuginfo_eip(eip, &info))
+			cprintf("\t%s:%d: %.*s+%d\n", info.eip_file, info.eip_line,
+				info.eip_fn_namelen, info.eip_fn_name,
+				eip - info.eip_fn_addr);
+
+		ebp = ((uint32_t *) ebp)[0];
+	}
 	return 0;
 }
 
+static void
+pte_perms_show(int perms)
+{
+	int i, size;
+	static const char* perm_strs[] = {
+		"PTE_P", "PTE_W", "PTE_U", "PTE_PWT", "PTE_PCD", "PTE_A", "PTE_D", "PTE_PS", "PTE_G"
+	};
 
+	size = sizeof(perm_strs) / sizeof(char *);
+	for (i = 0; i < size; i++) {
+		cprintf("%s: 0x%x ", perm_strs[i], perms & (1 << i));
+	}
+	cprintf("\n");
+}
+
+static void
+pte_show(pte_t pte)
+{
+	cprintf("pa 0x%x ", PTE_ADDR(pte));
+	pte_perms_show(PGOFF(pte));
+}
+
+int
+mon_showmappings(int argc, char **argv, struct Trapframe *tf)
+{
+	int i;
+	uintptr_t va_arg[2], va;
+	pde_t *pgdir;
+	pte_t *pte;
+
+	if (argc != 3) {
+		cprintf("usage: showmappings begin_va end_va\n");
+		return 0;
+	}
+
+	for (i = 1; i < argc; i++) {
+		va_arg[i - 1] = (uintptr_t) strtol(argv[i], NULL, 0);
+	}
+
+	if (va_arg[0] > va_arg[1]) {
+		cprintf("begin va (0x%x) is greater than end va (0x%x)\n", va_arg[0], va_arg[1]);
+		return 0;
+	}
+
+	pgdir = (pde_t *) KADDR(rcr3());
+	for (va = va_arg[0]; va <= va_arg[1]; va += PGSIZE) {
+		pte = pgdir_walk(pgdir, (void *) va, 0);
+		if (!pte || !(*pte & PTE_P)) {
+			cprintf("va 0x%x is not mapped\n", va);
+		} else {
+			cprintf("va 0x%x ", va);
+			pte_show(*pte);
+		}
+
+		if (va + PGSIZE < va)
+			break;
+	}
+	return 0;
+}
+
+int
+mon_modpageperms(int argc, char **argv, struct Trapframe *tf)
+{
+	uintptr_t va_arg;
+	int perms;
+	pde_t *pgdir;
+	pte_t *pte;
+
+	if (argc != 3) {
+		cprintf("usage: modpageperms va perms\n");
+		return 0;
+	}
+
+	va_arg = (uintptr_t) strtol(argv[1], NULL, 0);
+
+	perms = (uintptr_t) strtol(argv[2], NULL, 0);
+	if (PTE_ADDR(perms)) {
+		cprintf("perms 0x%03x is invalid\n", perms);
+		return 0;
+	}
+
+	pgdir = (pde_t *) KADDR(rcr3());
+	pte = pgdir_walk(pgdir, (void *) va_arg, 0);
+	if (!pte) {
+		cprintf("va 0x%x is not mapped\n", va_arg);
+		return 0;
+	}
+
+	cprintf("va 0x%x existing pte ");
+	pte_show(*pte);
+	*pte = PTE_ADDR(*pte) | perms;
+	cprintf("va 0x%x changed pte ");
+	pte_show(*pte);
+	return 0;
+}
+
+int
+mon_dumpvm(int argc, char **argv, struct Trapframe *tf)
+{
+	uintptr_t begin_va, end_va, va;
+	pde_t *pgdir;
+	pte_t *pte;
+
+	if (argc != 3) {
+		cprintf("usage: dumpvm begin_va end_va\n");
+		return 0;
+	}
+
+	begin_va = (uintptr_t) strtol(argv[1], NULL, 0);
+	end_va = (uintptr_t) strtol(argv[2], NULL, 0);
+	if (begin_va > end_va) {
+		cprintf("begin va 0x%x is greater than end va 0x%x\n", begin_va, end_va);
+		return 0;
+	}
+
+	pgdir = (pde_t *) KADDR(rcr3());
+	for (va = begin_va; va <= end_va; va++) {
+		pte = pgdir_walk(pgdir, (void *) va, 0);
+		if (!pte || !(*pte & PTE_P))
+			cprintf("virtual address 0x%x is not mapped yet\n", va);
+		else
+			cprintf("virtual address 0x%x: 0x%x\n", va, *((uint32_t *) va));
+
+		if (va + 1 < va)
+			break;
+	}
+	return 0;
+}
 
 /***** Kernel monitor command interpreter *****/
 
