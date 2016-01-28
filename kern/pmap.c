@@ -102,11 +102,12 @@ boot_alloc(uint32_t n)
 	if (!n)
 		return nextfree;
 
-	if ((uintptr_t) nextfree - KERNBASE + n >= npages * PGSIZE)
-		panic("run out of physical memory: nextfree %8x, n %d npages %d", nextfree, n, npages);
-
 	result = nextfree;
 	nextfree = ROUNDUP(nextfree + n, PGSIZE);
+
+	if ((uintptr_t) nextfree >= KERNBASE + PTSIZE)
+		panic("run out of physical memory: nextfree 0x%8x", nextfree);
+
 	return result;
 }
 
@@ -212,7 +213,7 @@ mem_init(void)
 	// we just set up the mapping anyway.
 	// Permissions: kernel RW, user NONE
 	// Your code goes here:
-	boot_map_region(kern_pgdir, KERNBASE, 0x100000000 - KERNBASE, 0, PTE_W|PTE_P);
+	boot_map_region(kern_pgdir, KERNBASE, 0xffffffff - KERNBASE + 1, 0, PTE_W|PTE_P);
 
 	// Check that the initial page directory has been set up correctly.
 	check_kern_pgdir();

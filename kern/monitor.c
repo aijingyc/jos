@@ -29,7 +29,7 @@ static struct Command commands[] = {
 	{ "backtrace", "Display information about the backtrace", mon_backtrace },
 	{ "showmappings", "Display memory mappings for a range of virtual addresses", mon_showmappings },
 	{ "modpageperms", "Modify page permissions", mon_modpageperms },
-	{ "dumpvm", "Dump virtual memory content", mon_dumpvm },
+	{ "showvm", "Show virtual memory content", mon_showvm },
 };
 #define NCOMMANDS (sizeof(commands)/sizeof(commands[0]))
 
@@ -188,13 +188,41 @@ mon_modpageperms(int argc, char **argv, struct Trapframe *tf)
 	return 0;
 }
 
-int
-mon_dumpvm(int argc, char **argv, struct Trapframe *tf)
+static void
+show_page(pde_t *pgdir, uintptr_t begin_va, uintptr_t end_va, bool valid, int *i, int *j)
 {
-	uintptr_t begin_va, end_va;
 	char *va;
+
+	for (va = (char *) begin_va; va <= (char *) end_va; va++) {
+		if (*i == 0 && *j == 0)
+			cprintf("0x%08x: ", va);
+
+		if (valid)
+			cprintf("%02x", (uint8_t) *va);
+		else
+			cprintf("xx");
+
+		(*i)++;
+		if (*i == 4) {
+	
+		cprintf(" ");
+			*i = 0;
+			(*j)++;
+		}
+		if (*j == 4) {
+			cprintf("\n");
+			*i = *j = 0;
+		}
+	}
+}
+
+int
+mon_showvm(int argc, char **argv, struct Trapframe *tf)
+{
+	uintptr_t begin_va, end_va, va, next_va;
 	pde_t *pgdir;
 	pte_t *pte;
+	int i, j;
 
 	if (argc != 3) {
 		cprintf("usage: dumpvm begin_va end_va\n");
@@ -209,16 +237,13 @@ mon_dumpvm(int argc, char **argv, struct Trapframe *tf)
 	}
 
 	pgdir = (pde_t *) KADDR(rcr3());
-	for (va = (char *) begin_va; va <= (char *) end_va; va++) {
+	for (i = j = 0, va = begin_va; va <= end_va; va += PGSIZE) {
 		pte = pgdir_walk(pgdir, (void *) va, 0);
-		if (!pte || !(*pte & PTE_P))
-			cprintf("virtual address 0x%x is not mapped yet\n", va);
-		else
-			cprintf("virtual address 0x%x: 0x%02x\n", va, (uint8_t) *va);
-
-		if (va + 1 < va)
-			break;
+		next_va = MIN(ROUNDDOWN(va + PGSIZE, PGSIZE) - 1, end_va);
+		show_page(pgdir, va, next_va, *pte && (*pte & PTE_P), &i, &j);
 	}
+	if (i)
+		cprintf("\n");
 	return 0;
 }
 
