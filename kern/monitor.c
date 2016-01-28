@@ -190,10 +190,10 @@ mon_modpageperms(int argc, char **argv, struct Trapframe *tf)
 int
 mon_dumpvm(int argc, char **argv, struct Trapframe *tf)
 {
-	uintptr_t begin_va, end_va;
+	uintptr_t begin_va, end_va, np_va;
 	char *va;
 	pde_t *pgdir;
-	pte_t *pte;
+	pte_t *pte = NULL;
 	int i, j;
 
 	if (argc != 3) {
@@ -209,12 +209,15 @@ mon_dumpvm(int argc, char **argv, struct Trapframe *tf)
 	}
 
 	pgdir = (pde_t *) KADDR(rcr3());
-	for (i = j = 0, va = (char *) begin_va; va <= (char *) end_va; va++) {
+	for (i = j = 0, np_va = begin_va, va = (char *) begin_va; va <= (char *) end_va; va++) {
 		if (i == 0 && j == 0)
 			cprintf("0x%08x: ", va);
 		i++;
 
-		pte = pgdir_walk(pgdir, (void *) va, 0);
+		if (va == (char *) np_va) {
+			pte = pgdir_walk(pgdir, (void *) va, 0);
+			np_va = ROUNDDOWN(np_va + PGSIZE, PGSIZE);
+		}
 		if (!pte || !(*pte & PTE_P))
 			cprintf("xx");
 		else
