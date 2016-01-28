@@ -194,6 +194,7 @@ mon_dumpvm(int argc, char **argv, struct Trapframe *tf)
 	char *va;
 	pde_t *pgdir;
 	pte_t *pte;
+	int i, j;
 
 	if (argc != 3) {
 		cprintf("usage: dumpvm begin_va end_va\n");
@@ -208,16 +209,32 @@ mon_dumpvm(int argc, char **argv, struct Trapframe *tf)
 	}
 
 	pgdir = (pde_t *) KADDR(rcr3());
-	for (va = (char *) begin_va; va <= (char *) end_va; va++) {
+	for (i = j = 0, va = (char *) begin_va; va <= (char *) end_va; va++) {
+		if (i == 0 && j == 0)
+			cprintf("0x%08x: ", va);
+		i++;
+
 		pte = pgdir_walk(pgdir, (void *) va, 0);
 		if (!pte || !(*pte & PTE_P))
-			cprintf("virtual address 0x%x is not mapped yet\n", va);
+			cprintf("xx");
 		else
-			cprintf("virtual address 0x%x: 0x%02x\n", va, (uint8_t) *va);
+			cprintf("%02x", (uint8_t) *va);
+
+		if (i == 4) {
+			cprintf(" ");
+			i = 0;
+			j++;
+		}
+		if (j == 4) {
+			cprintf("\n");
+			i = j = 0;
+		}
 
 		if (va + 1 < va)
 			break;
 	}
+	if (i)
+		cprintf("\n");
 	return 0;
 }
 
