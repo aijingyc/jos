@@ -29,7 +29,6 @@ static struct Command commands[] = {
 	{ "showmappings", "Display memory mappings for a range of virtual addresses", mon_showmappings },
 	{ "modpageperms", "Modify page permissions", mon_modpageperms },
 	{ "showvm", "Show virtual memory content", mon_showvm },
-	{ "showpm", "Show physical memory content", mon_showpm },
 };
 #define NCOMMANDS (sizeof(commands)/sizeof(commands[0]))
 
@@ -189,14 +188,10 @@ mon_modpageperms(int argc, char **argv, struct Trapframe *tf)
 }
 
 static void
-show_page(pde_t *pgdir, uintptr_t begin_va, uintptr_t end_va, int *i, int *j)
+show_page(pde_t *pgdir, uintptr_t begin_va, uintptr_t end_va, bool valid, int *i, int *j)
 {
-	pte_t *pte;
 	char *va;
-	bool valid;
 
-	pte = pgdir_walk(pgdir, (void *) begin_va, 0);
-	valid = *pte && (*pte & PTE_P);
 	for (va = (char *) begin_va; va <= (char *) end_va; va++) {
 		if (*i == 0 && *j == 0)
 			cprintf("0x%08x: ", va);
@@ -225,6 +220,7 @@ mon_showvm(int argc, char **argv, struct Trapframe *tf)
 {
 	uintptr_t begin_va, end_va, va, next_va;
 	pde_t *pgdir;
+	pte_t *pte;
 	int i, j;
 
 	if (argc != 3) {
@@ -241,35 +237,12 @@ mon_showvm(int argc, char **argv, struct Trapframe *tf)
 
 	pgdir = (pde_t *) KADDR(rcr3());
 	for (i = j = 0, va = begin_va; va <= end_va; va += PGSIZE) {
+		pte = pgdir_walk(pgdir, (void *) va, 0);
 		next_va = MIN(ROUNDDOWN(va + PGSIZE, PGSIZE) - 1, end_va);
-		show_page(pgdir, va, next_va, &i, &j);
+		show_page(pgdir, va, next_va, *pte && (*pte & PTE_P), &i, &j);
 	}
 	if (i)
 		cprintf("\n");
-	return 0;
-}
-
-int
-mon_showpm(int argc, char **argv, struct Trapframe *tf)
-{
-	physaddr_t begin_pa, end_pa;
-	char *va;
-	pde_t *pgdir;
-	pte_t *pte = NULL;
-
-	if (argc != 3) {
-		cprintf("usage: dumppm begin_pa end_pa\n");
-		return 0;
-	}
-
-	begin_pa = (uintptr_t) strtol(argv[1], NULL, 0);
-	end_pa = (uintptr_t) strtol(argv[2], NULL, 0);
-	if (begin_pa > end_pa) {
-		cprintf("begin pa (0x%x) is greater than end pa (0x%x)\n", begin_pa, end_pa);
-		return 0;
-	}
-
-	pgdir = (pde_t *) KADDR(rcr3());
 	return 0;
 }
 
