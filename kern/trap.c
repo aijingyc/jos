@@ -65,13 +65,20 @@ static const char *trapname(int trapno)
 	return "(unknown trap)";
 }
 
+extern uintptr_t trap_handlers[];
 
 void
 trap_init(void)
 {
 	extern struct Segdesc gdt[];
+	int i;
 
 	// LAB 3: Your code here.
+	for (i = 0; i <= T_SYSCALL; i++)
+		SETGATE(idt[i], 0, GD_KT, trap_handlers[i], 0);
+
+	SETGATE(idt[T_BRKPT], 0, GD_KT, trap_handlers[T_BRKPT], 3);
+	SETGATE(idt[T_SYSCALL], 0, GD_KT, trap_handlers[T_SYSCALL], 3);
 
 	// Per-CPU setup 
 	trap_init_percpu();
@@ -173,6 +180,25 @@ trap_dispatch(struct Trapframe *tf)
 {
 	// Handle processor exceptions.
 	// LAB 3: Your code here.
+	if (tf->tf_trapno == T_PGFLT) {
+		page_fault_handler(tf);
+		return;
+	}
+
+	if (tf->tf_trapno == T_BRKPT) {
+		monitor(tf);
+		return;
+	}
+
+	if (tf->tf_trapno == T_SYSCALL) {
+		tf->tf_regs.reg_eax = syscall(tf->tf_regs.reg_eax,
+					      tf->tf_regs.reg_edx,
+					      tf->tf_regs.reg_ecx,
+					      tf->tf_regs.reg_ebx,
+					      tf->tf_regs.reg_edi,
+					      tf->tf_regs.reg_esi);
+		return;
+	}
 
 	// Handle spurious interrupts
 	// The hardware sometimes raises these because of noise on the
