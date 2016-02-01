@@ -369,10 +369,13 @@ load_icode(struct Env *e, uint8_t *binary)
 	struct Elf *elf;
 	struct Proghdr *ph, *eph;
 
+	elf = (struct Elf*) binary;
+	if (elf->e_magic != ELF_MAGIC)
+		panic("tried to load an invalid elf");
+
         // Switch to env's pgdir before loading icode to its virtual address space.
 	lcr3(PADDR(e->env_pgdir));
 
-	elf = (struct Elf*) binary;
 	ph = (struct Proghdr *) ((uint8_t *) elf + elf->e_phoff);
 	eph = (struct Proghdr *) (ph + elf->e_phnum);
 	for (; ph < eph; ph++) {
