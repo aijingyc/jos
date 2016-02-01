@@ -8,6 +8,7 @@
 #include <inc/x86.h>
 
 #include <kern/console.h>
+#include <kern/env.h>
 #include <kern/monitor.h>
 #include <kern/kdebug.h>
 #include <kern/pmap.h>
@@ -30,6 +31,8 @@ static struct Command commands[] = {
 	{ "showmappings", "Display memory mappings for a range of virtual addresses", mon_showmappings },
 	{ "modpageperms", "Modify page permissions", mon_modpageperms },
 	{ "showvm", "Show virtual memory content", mon_showvm },
+	{ "continue", "Continue to run user env", mon_continue },
+	{ "stepinto", "Step into user env's next instruction", mon_stepinto },
 };
 #define NCOMMANDS (sizeof(commands)/sizeof(commands[0]))
 
@@ -245,6 +248,44 @@ mon_showvm(int argc, char **argv, struct Trapframe *tf)
 	if (i)
 		cprintf("\n");
 	return 0;
+}
+
+int
+mon_continue(int argc, char **argv, struct Trapframe *tf)
+{
+	if (argc != 1) {
+		cprintf("usage: continue\n");
+		return 0;
+	}
+
+	if (!tf) {
+		cprintf("tf is invalid\n");
+		return 0;
+	}
+
+	if (tf->tf_eflags & FL_TF)
+		tf->tf_eflags &= ~FL_TF;
+
+	env_run(curenv);
+}
+
+int
+mon_stepinto(int argc, char **argv, struct Trapframe *tf)
+{
+	if (argc != 1) {
+		cprintf("usage: stepinto\n");
+		return 0;
+	}
+
+	if (!tf) {
+		cprintf("tf is invalid\n");
+		return 0;
+	}
+
+	if (!(tf->tf_eflags & FL_TF))
+		tf->tf_eflags |= FL_TF;
+
+	env_run(curenv);
 }
 
 /***** Kernel monitor command interpreter *****/
