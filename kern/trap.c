@@ -67,7 +67,7 @@ trap_init(void)
 	int i;
 
 	// LAB 3: Your code here.
-	for (i = 0; i <= T_SYSCALL; i++)
+	for (i = 0; i < 32; i++)
 		SETGATE(idt[i], 0, GD_KT, trap_handlers[i], 0);
 
 	SETGATE(idt[T_BRKPT], 0, GD_KT, trap_handlers[T_BRKPT], 3);
