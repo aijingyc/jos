@@ -317,6 +317,8 @@ page_init(void)
 		if (!i) continue;
 
 		pa = page2pa(&pages[i]);
+		if (pa == MPENTRY_PADDR)
+			continue;
 		if (pa >= IOPHYSMEM && pa < EXTPHYSMEM)
 			continue;
 
