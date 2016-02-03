@@ -32,7 +32,8 @@ set_pgfault_handler(void (*handler)(struct UTrapframe *utf))
 		if ((r = sys_page_alloc(0, (void *) (UXSTACKTOP - PGSIZE), PTE_U|PTE_P|PTE_W)) < 0)
 			panic("sys_page_alloc: %e", r);
 
-		sys_env_set_pgfault_upcall(0, _pgfault_upcall);
+		if ((r = sys_env_set_pgfault_upcall(0, _pgfault_upcall)) < 0)
+			panic("sys_env_set_pgfault_upcall %e", r);
 	}
 
 	// Save handler pointer for assembly to call.
