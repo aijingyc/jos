@@ -70,7 +70,7 @@ _pgfault_upcall:
 	subl $4, %eax
 	movl %eax, 0x28(%esp)
 	movl 0x20(%esp), %ebx
-	movl %ebx, %eax
+	movl %ebx, (%eax)
 
 	// Restore the trap-time registers.  After you do this, you
 	// can no longer modify any general-purpose registers.
