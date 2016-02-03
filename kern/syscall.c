@@ -182,7 +182,7 @@ sys_page_alloc(envid_t envid, void *va, int perm)
 	if ((r = envid2env(envid, &e, 1)) < 0)
 		return r;
 
-	if ((uintptr_t) va >= UTOP || (uintptr_t) va % PGSIZE != 0)
+	if ((uintptr_t) va >= UTOP || PTE_ADDR(va) != (uintptr_t) va)
 		return -E_INVAL;
 
 	if (!(perm & (PTE_U|PTE_P)) || (perm & ~PTE_SYSCALL))
@@ -192,7 +192,11 @@ sys_page_alloc(envid_t envid, void *va, int perm)
 	if (!p)
 		return -E_NO_MEM;
 
-	return page_insert(e->env_pgdir, p, va, perm);
+	if ((r = page_insert(e->env_pgdir, p, va, perm)) < 0) {
+		page_free(p);
+		return r;
+	}
+	return 0;
 }
 
 // Map the page of memory at 'srcva' in srcenvid's address space
@@ -234,10 +238,10 @@ sys_page_map(envid_t srcenvid, void *srcva,
 	if ((r = envid2env(dstenvid, &dste, 1)) < 0)
 		return r;
 
-	if ((uintptr_t) srcva >= UTOP || (uintptr_t) srcva % PGSIZE != 0)
+	if ((uintptr_t) srcva >= UTOP || PTE_ADDR(srcva) != (uintptr_t) srcva)
 		return -E_INVAL;
 
-	if ((uintptr_t) dstva >= UTOP || (uintptr_t) dstva % PGSIZE != 0)
+	if ((uintptr_t) dstva >= UTOP || PTE_ADDR(dstva) != (uintptr_t) dstva)
 		return -E_INVAL;
 
 	if (!(perm & (PTE_U|PTE_P)) || (perm & ~PTE_SYSCALL))
@@ -272,7 +276,7 @@ sys_page_unmap(envid_t envid, void *va)
 	if ((r = envid2env(envid, &e, 1)) < 0)
 		return r;
 
-	if ((uintptr_t) va >= UTOP || (uintptr_t) va % PGSIZE != 0)
+	if ((uintptr_t) va >= UTOP || PTE_ADDR(va) != (uintptr_t) va)
 		return -E_INVAL;
 
 	page_remove(e->env_pgdir, va);
