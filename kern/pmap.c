@@ -622,7 +622,7 @@ mmio_map_region(physaddr_t pa, size_t size)
 	if (base + size >= MMIOLIM)
 		panic("reserved size 0x%x from base 0x%x exceed MMIOLIM 0x%x", size, base, MMIOLIM);
 
-	boot_map_region(kern_pgdir, base, size, pa, PTE_PCD|PTE_PWT);
+	boot_map_region(kern_pgdir, base, size, pa, PTE_PCD|PTE_PWT|PTE_W);
 
 	alloc = (void *) base;
 	base += size;
