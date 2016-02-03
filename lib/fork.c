@@ -102,7 +102,6 @@ fork(void)
 	// LAB 4: Your code here.
 	envid_t envid;
 	uint32_t pn;
-	uintptr_t va;
 	int r;
 
 	set_pgfault_handler(pgfault);
@@ -117,7 +116,7 @@ fork(void)
 	}
 
 	for (pn = 0; pn < PGNUM(UTOP); pn++) {
-		va = pn << PGSHIFT;
+		uintptr_t va = pn << PGSHIFT;
 		if (!(uvpd[PDX(va)] & PTE_P))
 			continue;
 
