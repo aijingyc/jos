@@ -417,8 +417,8 @@ boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm
 {
 	// Fill this function in
 	assert(size % PGSIZE == 0);
-	assert((va % PGSIZE) == 0);
-	assert((pa % PGSIZE) == 0);
+	assert(PTE_ADDR(va) == va);
+	assert(PTE_ADDR(pa) == pa);
 
 	int i, n;
 	pte_t *pte;
