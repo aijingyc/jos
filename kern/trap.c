@@ -67,7 +67,7 @@ trap_init(void)
 	int i;
 
 	// LAB 3: Your code here.
-	for (i = 0; i < 32; i++)
+	for (i = 0; i < T_SYSCALL; i++)
 		SETGATE(idt[i], 0, GD_KT, trap_handlers[i], 0);
 
 	SETGATE(idt[T_BRKPT], 0, GD_KT, trap_handlers[T_BRKPT], 3);
@@ -230,6 +230,10 @@ page_fault_handler(struct Trapframe *tf)
 	// Handle kernel-mode page faults.
 
 	// LAB 3: Your code here.
+	if ((tf->tf_cs & 3) != 3) {
+		print_trapframe(tf);
+		panic("page fault happened in kernel mode");
+	}
 
 	// We've already handled kernel-mode exceptions, so if we get here,
 	// the page fault happened in user mode.
