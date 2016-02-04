@@ -91,6 +91,7 @@ sys_exofork(void)
 	if ((r = env_alloc(&e, curenv->env_id)) < 0)
 	    return r;
 
+	e->env_status = ENV_NOT_RUNNABLE;
 	e->env_tf = curenv->env_tf;
 	e->env_tf.tf_regs.reg_eax = 0;
 	return e->env_id;
@@ -325,7 +326,44 @@ static int
 sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 {
 	// LAB 4: Your code here.
-	panic("sys_ipc_try_send not implemented");
+	struct Env *e;
+	int r;
+	struct PageInfo *p;
+	pte_t *pte;
+
+	if ((r = envid2env(envid, &e, 0)) < 0)
+		return r;
+
+	if (!e->env_ipc_recving)
+		return -E_IPC_NOT_RECV;
+
+	if ((uintptr_t) srcva < UTOP) {
+		if (PTE_ADDR(srcva) != (uintptr_t) srcva)
+			return -E_INVAL;
+
+		if (!(perm & (PTE_U|PTE_P)) || (perm & ~PTE_SYSCALL))
+			return -E_INVAL;
+
+		p = page_lookup(curenv->env_pgdir, srcva, &pte);
+		if (!p)
+			return -E_INVAL;
+
+		if ((perm & PTE_W) && !(*pte & PTE_W))
+			return -E_INVAL;
+
+		if ((uintptr_t) e->env_ipc_dstva < UTOP && PTE_ADDR(e->env_ipc_dstva) == (uintptr_t) e->env_ipc_dstva) {
+			if ((r = page_insert(e->env_pgdir, p, e->env_ipc_dstva, perm)) < 0)
+				return r;
+
+			e->env_ipc_perm = perm;
+		}
+	}
+
+	e->env_ipc_recving = 0;
+	e->env_ipc_value = value;
+	e->env_ipc_from = curenv->env_id;
+	e->env_status = ENV_RUNNABLE;
+	return 0;
 }
 
 // Block until a value is ready.  Record that you want to receive
@@ -343,7 +381,17 @@ static int
 sys_ipc_recv(void *dstva)
 {
 	// LAB 4: Your code here.
-	panic("sys_ipc_recv not implemented");
+	if ((uintptr_t) dstva < UTOP) {
+		if (PTE_ADDR(dstva) != (uint32_t) dstva)
+			return -E_INVAL;
+
+		curenv->env_ipc_dstva = dstva;
+	}
+
+	curenv->env_ipc_recving = 1;
+	curenv->env_status = ENV_NOT_RUNNABLE;
+	curenv->env_tf.tf_regs.reg_eax = 0;
+	sched_yield();
 	return 0;
 }
 
@@ -380,6 +428,10 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 	case SYS_yield:
 		sys_yield();
 		return 0;
+	case SYS_ipc_try_send:
+		return sys_ipc_try_send(a1, a2, (void *)a3, a4);
+	case SYS_ipc_recv:
+		return sys_ipc_recv((void *) a1);
 	default:
 		return -E_INVAL;
 	}
