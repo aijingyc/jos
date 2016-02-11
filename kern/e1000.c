@@ -150,7 +150,7 @@ e1000_attach(struct pci_func *pcif)
 }
 
 int
-e1000_send(const void *pkt, size_t size)
+e1000_transmit(const void *pkt, size_t size)
 {
 	uint32_t tdt;
 
