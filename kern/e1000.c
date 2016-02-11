@@ -1,6 +1,7 @@
 #include <kern/e1000.h>
 
 // LAB 6: Your driver code here
+#include <inc/error.h>
 #include <inc/string.h>
 #include <kern/pci.h>
 #include <kern/pmap.h>
@@ -130,8 +131,10 @@ e1000_attach(struct pci_func *pcif)
 
         // Transmit initialization
 	assert((uintptr_t) tx_descs % 16 == 0);
-	for (i = 0; i < E1000_MAX_TDESC; i++)
+	for (i = 0; i < E1000_MAX_TDESC; i++) {
 		tx_descs[i].addr = PADDR(tx_pkts[i]);
+		tx_descs[i].status |= E1000_TXD_STAT_DD;
+	}
 	e1000_write_reg(E1000_TDBAL, PADDR(tx_descs));
 	e1000_write_reg(E1000_TDLEN, E1000_MAX_TDESC * sizeof(struct tx_desc));
 	assert(e1000_read_reg(E1000_TDLEN) % 128 == 0);
@@ -149,14 +152,17 @@ e1000_attach(struct pci_func *pcif)
 int
 e1000_send(const void *pkt, size_t size)
 {
-	uint32_t tail, next;
+	uint32_t tdt;
 
-	tail = e1000_read_reg(E1000_TDT);
-	next = (tail + 1) % E1000_MAX_TDESC;
-	memcpy(tx_pkts[next], pkt, size);
-	tx_descs[next].cmd = E1000_TXD_CMD_RS;
-	tx_descs[next].length = size;
-	e1000_write_reg(E1000_TDT, next);
+	tdt = e1000_read_reg(E1000_TDT);
+	if (!(tx_descs[tdt].status & E1000_TXD_STAT_DD))
+		return -E_INVAL;
+
+	memmove(tx_pkts[tdt], pkt, size);
+	tx_descs[tdt].cmd = E1000_TXD_CMD_RS | E1000_TXD_CMD_EOP;
+	tx_descs[tdt].length = size;
+	tx_descs[tdt].status &= ~E1000_TXD_STAT_DD;
+	e1000_write_reg(E1000_TDT, (tdt + 1) % E1000_MAX_TDESC);
 
 	return 0;
 }
