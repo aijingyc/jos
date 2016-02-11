@@ -1,6 +1,7 @@
 #include <kern/e1000.h>
 
 // LAB 6: Your driver code here
+#include <inc/string.h>
 #include <kern/pci.h>
 #include <kern/pmap.h>
 
@@ -47,14 +48,14 @@
 #define E1000_TIPG_IPGR2  0x3ff00000    /* IPG receive time 2 */
 
 /* Transmit descriptor command */
-#define E1000_TXD_CMD_EOP    0x01000000 /* End of Packet */
-#define E1000_TXD_CMD_IFCS   0x02000000 /* Insert FCS (Ethernet CRC) */
-#define E1000_TXD_CMD_IC     0x04000000 /* Insert Checksum */
-#define E1000_TXD_CMD_RS     0x08000000 /* Report Status */
-#define E1000_TXD_CMD_RPS    0x10000000 /* Report Packet Sent */
-#define E1000_TXD_CMD_DEXT   0x20000000 /* Descriptor extension (0 = legacy) */
-#define E1000_TXD_CMD_VLE    0x40000000 /* Add VLAN tag */
-#define E1000_TXD_CMD_IDE    0x80000000 /* Enable Tidv register */
+#define E1000_TXD_CMD_EOP    0x00000001 /* End of Packet */
+#define E1000_TXD_CMD_IFCS   0x00000002 /* Insert FCS (Ethernet CRC) */
+#define E1000_TXD_CMD_IC     0x00000004 /* Insert Checksum */
+#define E1000_TXD_CMD_RS     0x00000008 /* Report Status */
+#define E1000_TXD_CMD_RPS    0x00000010 /* Report Packet Sent */
+#define E1000_TXD_CMD_DEXT   0x00000020 /* Descriptor extension (0 = legacy) */
+#define E1000_TXD_CMD_VLE    0x00000040 /* Add VLAN tag */
+#define E1000_TXD_CMD_IDE    0x00000080 /* Enable Tidv register */
 
 /* Transmit descriptor status */
 #define E1000_TXD_STAT_DD    0x00000001 /* Descriptor Done */
@@ -146,7 +147,16 @@ e1000_attach(struct pci_func *pcif)
 }
 
 int
-e1000_send(const char *pkt, size_t size)
+e1000_send(const void *pkt, size_t size)
 {
+	uint32_t tail, next;
+
+	tail = e1000_read_reg(E1000_TDT);
+	next = (tail + 1) % E1000_MAX_TDESC;
+	memcpy(tx_pkts[next], pkt, size);
+	tx_descs[next].cmd = E1000_TXD_CMD_RS;
+	tx_descs[next].length = size;
+	e1000_write_reg(E1000_TDT, next);
+
 	return 0;
 }
