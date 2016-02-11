@@ -81,7 +81,6 @@ struct tx_desc
 
 volatile uint32_t *e1000;
 
-static uint32_t head, tail;
 static struct tx_desc tx_descs[E1000_MAX_TDESC] __attribute__((aligned(16)));
 static char tx_pkts[E1000_MAX_TDESC][MAX_PACKET_SIZE];
 
@@ -129,13 +128,15 @@ e1000_attach(struct pci_func *pcif)
 	e1000 = mmio_map_region(pcif->reg_base[0], pcif->reg_size[0]);
 
         // Transmit initialization
+	assert((uintptr_t) tx_descs % 16 == 0);
 	for (i = 0; i < E1000_MAX_TDESC; i++) {
 		tx_descs[i].addr = PADDR(tx_pkts[i]);
 	}
 	e1000_write_reg(E1000_TDBAL, PADDR(tx_descs));
 	e1000_write_reg(E1000_TDLEN, E1000_MAX_TDESC * sizeof(struct tx_desc));
-	e1000_write_reg(E1000_TDH, head);
-	e1000_write_reg(E1000_TDT, tail);
+	assert(e1000_read_reg(E1000_TDLEN) % 128 == 0);
+	e1000_write_reg(E1000_TDH, 0);
+	e1000_write_reg(E1000_TDT, 0);
 	e1000_write_reg(E1000_TCTL, E1000_TCTL_EN | E1000_TCTL_PSP |
 			masked_value(E1000_TCTL_CT, 0x10) |
 			masked_value(E1000_TCTL_COLD, 0x40));
