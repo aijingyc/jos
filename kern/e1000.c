@@ -145,3 +145,8 @@ e1000_attach(struct pci_func *pcif)
 	return 0;
 }
 
+int
+e1000_send(const char *pkt, size_t size)
+{
+	return 0;
+}
