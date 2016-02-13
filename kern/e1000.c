@@ -150,15 +150,18 @@ e1000_attach(struct pci_func *pcif)
 }
 
 int
-e1000_transmit(const void *pkt, size_t size)
+e1000_transmit(void *data, size_t size)
 {
 	uint32_t tdt;
+
+	if (size > MAX_PACKET_SIZE)
+		return -E_INVAL;
 
 	tdt = e1000_read_reg(E1000_TDT);
 	if (!(tx_descs[tdt].status & E1000_TXD_STAT_DD))
 		return -E_INVAL;
 
-	memmove(tx_pkts[tdt], pkt, size);
+	memcpy(tx_pkts[tdt], data, size);
 	tx_descs[tdt].cmd = E1000_TXD_CMD_RS | E1000_TXD_CMD_EOP;
 	tx_descs[tdt].length = size;
 	tx_descs[tdt].status &= ~E1000_TXD_STAT_DD;

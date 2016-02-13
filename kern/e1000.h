@@ -9,6 +9,6 @@
 struct pci_func;
 
 int e1000_attach(struct pci_func *f);
-int e1000_transmit(const void *pkt, size_t size);
+int e1000_transmit(void *data, size_t size);
 
 #endif	// JOS_KERN_E1000_H
