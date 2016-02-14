@@ -436,12 +436,13 @@ sys_net_try_send(void *data, size_t size)
 }
 
 static int
-sys_net_try_receive(void *data)
+sys_net_try_receive(void *data, size_t *size)
 {
 	if ((uintptr_t) data >= UTOP)
 		return -E_INVAL;
 
-	return e1000_receive(data);
+	*size  = e1000_receive(data);
+	return MAX(*size, 0);
 }
 
 // Dispatches to the correct kernel function, passing the arguments.
@@ -488,7 +489,7 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 	case SYS_net_try_send:
 		return sys_net_try_send((void *) a1, a2);
 	case SYS_net_try_receive:
-		return sys_net_try_receive((void *) a1);
+		return sys_net_try_receive((void *) a1, (size_t *) a2);
 	default:
 		return -E_INVAL;
 	}

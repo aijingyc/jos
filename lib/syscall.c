@@ -130,7 +130,7 @@ sys_net_try_send(void *data, size_t size)
 }
 
 int
-sys_net_try_receive(void *data)
+sys_net_try_receive(void *data, size_t *size)
 {
-	return syscall(SYS_net_try_receive, 0, (uintptr_t) data, 0, 0, 0, 0);
+	return syscall(SYS_net_try_receive, 0, (uintptr_t) data, (uintptr_t) size, 0, 0, 0);
 }
