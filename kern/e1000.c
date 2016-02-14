@@ -251,7 +251,7 @@ e1000_attach(struct pci_func *pcif)
 	assert((uintptr_t) rx_descs % 16 == 0);
 	for (i = 0; i < E1000_MAX_RDESC; i++) {
 		rx_descs[i].addr = PADDR(rx_pkts[i]);
-		rx_descs[i].status |= E1000_RXD_STAT_DD;
+		rx_descs[i].status |= (E1000_RXD_STAT_DD | E1000_RXD_STAT_EOP);
 	}
 	e1000_write_reg(E1000_RAL, 0x12005452);
 	e1000_write_reg(E1000_RAH, 0x5634 | E1000_RAH_AV);
