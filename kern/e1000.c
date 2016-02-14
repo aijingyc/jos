@@ -261,7 +261,7 @@ e1000_attach(struct pci_func *pcif)
 	e1000_write_reg(E1000_RDLEN, E1000_MAX_RDESC * sizeof(struct rx_desc));
 	assert(e1000_read_reg(E1000_RDLEN) % 128 == 0);
 	e1000_write_reg(E1000_RDH, 0);
-	e1000_write_reg(E1000_RDT, E1000_MAX_RDESC);
+	e1000_write_reg(E1000_RDT, E1000_MAX_RDESC - 1);
 	e1000_write_reg(E1000_RCTL, E1000_RCTL_EN | E1000_RCTL_BAM | E1000_RCTL_SECRC);
 	return 0;
 }
