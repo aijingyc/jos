@@ -284,6 +284,11 @@ e1000_transmit(void *data, size_t size)
 	tx_descs[tdt].length = size;
 	tx_descs[tdt].status &= ~E1000_TXD_STAT_DD;
 	e1000_write_reg(E1000_TDT, (tdt + 1) % E1000_MAX_TDESC);
+	return 0;
+}
 
+int
+e1000_receive(void *data)
+{
 	return 0;
 }
