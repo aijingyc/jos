@@ -249,10 +249,8 @@ e1000_attach(struct pci_func *pcif)
 
         // Receive initialization
 	assert((uintptr_t) rx_descs % 16 == 0);
-	for (i = 0; i < E1000_MAX_RDESC; i++) {
+	for (i = 0; i < E1000_MAX_RDESC; i++)
 		rx_descs[i].addr = PADDR(rx_pkts[i]);
-		rx_descs[i].status |= (E1000_RXD_STAT_DD | E1000_RXD_STAT_EOP);
-	}
 	e1000_write_reg(E1000_RAL, 0x12005452);
 	e1000_write_reg(E1000_RAH, 0x5634 | E1000_RAH_AV);
 	e1000_write_reg(E1000_MTA, 0);
@@ -289,22 +287,22 @@ e1000_transmit(void *data, size_t size)
 int
 e1000_receive(void *data)
 {
-	uint32_t rdt;
+	uint32_t next;
 	int length;
 
-	rdt = e1000_read_reg(E1000_RDT);
-	if (!(rx_descs[rdt].status & E1000_RXD_STAT_DD))
+	next = (e1000_read_reg(E1000_RDT) + 1) % E1000_MAX_RDESC;
+	if (!(rx_descs[next].status & E1000_RXD_STAT_DD))
 		return -E_INVAL;
 
-	if (!(rx_descs[rdt].status & E1000_RXD_STAT_EOP))
+	if (!(rx_descs[next].status & E1000_RXD_STAT_EOP))
 		panic("Do not expect jumbo frames");
 
-	length = rx_descs[rdt].length;
+	length = rx_descs[next].length;
 	if (!length)
 		return -E_INVAL;
 
-	memcpy(data, rx_pkts[rdt], length);
-	rx_descs[rdt].status = 0;
-	e1000_write_reg(E1000_RDT, (rdt + 1) % E1000_MAX_RDESC);
+	memcpy(data, rx_pkts[next], length);
+	rx_descs[next].status = 0;
+	e1000_write_reg(E1000_RDT, next);
 	return length;
 }
