@@ -442,7 +442,7 @@ sys_net_try_receive(void *data, size_t *size)
 		return -E_INVAL;
 
 	*size  = e1000_receive(data);
-	return MAX(*size, 0);
+	return MIN(*size, 0);
 }
 
 // Dispatches to the correct kernel function, passing the arguments.
