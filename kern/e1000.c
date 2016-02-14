@@ -289,5 +289,19 @@ e1000_transmit(void *data, size_t size)
 int
 e1000_receive(void *data)
 {
-	return 0;
+	uint32_t rdt;
+	int length;
+
+	rdt = e1000_read_reg(E1000_RDT);
+	if (!(rx_descs[rdt].status & E1000_RXD_STAT_DD))
+		return -E_INVAL;
+
+	if (!(rx_descs[rdt].status & E1000_RXD_STAT_EOP))
+		panic("Do not expect jumbo frames");
+
+	length = rx_descs[rdt].length;
+	memcpy(data, rx_pkts[rdt], length);
+	rx_descs[rdt].status = 0;
+	e1000_write_reg(E1000_RDT, (rdt + 1) % E1000_MAX_RDESC);
+	return length;
 }
