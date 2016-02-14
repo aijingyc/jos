@@ -300,6 +300,9 @@ e1000_receive(void *data)
 		panic("Do not expect jumbo frames");
 
 	length = rx_descs[rdt].length;
+	if (!length)
+		return -E_INVAL;
+
 	memcpy(data, rx_pkts[rdt], length);
 	rx_descs[rdt].status = 0;
 	e1000_write_reg(E1000_RDT, (rdt + 1) % E1000_MAX_RDESC);
