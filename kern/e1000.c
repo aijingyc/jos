@@ -299,7 +299,7 @@ e1000_receive(void *data)
 
 	length = rx_descs[next].length;
 	if (!length)
-		return -E_INVAL;
+		panic("Received a packet with an invalid length %d", length);
 
 	memcpy(data, rx_pkts[next], length);
 	rx_descs[next].status = 0;
