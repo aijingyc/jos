@@ -298,7 +298,7 @@ e1000_receive(void *data)
 		panic("Do not expect jumbo frames");
 
 	length = rx_descs[next].length;
-	if (!length)
+	if (length <= 0)
 		panic("Received a packet with an invalid length %d", length);
 
 	memcpy(data, rx_pkts[next], length);

@@ -25,8 +25,7 @@ input(envid_t ns_envid)
 		while (sys_page_alloc(0, &nsipcbuf, perm) < 0);
 
 		nsipcbuf.pkt.jp_len = size;
-		memmove(nsipcbuf.pkt.jp_data, buf, size);
-
+		memcpy(nsipcbuf.pkt.jp_data, buf, size);
 		while (sys_ipc_try_send(ns_envid, NSREQ_INPUT, &nsipcbuf, perm) < 0);
 	}
 }
