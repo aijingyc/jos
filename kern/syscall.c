@@ -438,11 +438,15 @@ sys_net_try_send(void *data, size_t size)
 static int
 sys_net_try_receive(void *data, size_t *size)
 {
+	int r;
+
 	if ((uintptr_t) data >= UTOP)
 		return -E_INVAL;
 
-	*size  = e1000_receive(data);
-	return MIN(*size, 0);
+	r = e1000_receive(data);
+	if (r > 0)
+		*size = r;
+	return r;
 }
 
 // Dispatches to the correct kernel function, passing the arguments.

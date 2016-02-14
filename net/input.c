@@ -26,6 +26,7 @@ input(envid_t ns_envid)
 
 		nsipcbuf.pkt.jp_len = size;
 		memcpy(nsipcbuf.pkt.jp_data, buf, size);
+
 		while (sys_ipc_try_send(ns_envid, NSREQ_INPUT, &nsipcbuf, perm) < 0);
 	}
 }
