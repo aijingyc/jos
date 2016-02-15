@@ -100,7 +100,7 @@ umain(int argc, char **argv)
 
 	// Try files with indirect blocks
 	if ((f = open("/big", O_WRONLY|O_CREAT)) < 0)
-		panic("creat /big: %e", f);
+		panic("create /big: %e", f);
 	memset(buf, 0, sizeof(buf));
 	for (i = 0; i < (NDIRECT*3)*BLKSIZE; i += sizeof(buf)) {
 		*(int*)buf = i;

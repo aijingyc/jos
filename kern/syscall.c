@@ -12,6 +12,7 @@
 #include <kern/console.h>
 #include <kern/sched.h>
 #include <kern/time.h>
+#include <kern/e1000.h>
 
 // Print a string to the system console.
 // The string is exactly 'len' characters long.
@@ -422,7 +423,30 @@ static int
 sys_time_msec(void)
 {
 	// LAB 6: Your code here.
-	panic("sys_time_msec not implemented");
+	return time_msec();
+}
+
+static int
+sys_net_try_send(void *data, size_t size)
+{
+	if ((uintptr_t) data >= UTOP)
+		return -E_INVAL;
+
+	return e1000_transmit(data, size);
+}
+
+static int
+sys_net_try_receive(void *data, size_t *size)
+{
+	int r;
+
+	if ((uintptr_t) data >= UTOP)
+		return -E_INVAL;
+
+	r = e1000_receive(data);
+	if (r > 0)
+		*size = r;
+	return r;
 }
 
 // Dispatches to the correct kernel function, passing the arguments.
@@ -464,6 +488,12 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 		return sys_ipc_try_send(a1, a2, (void *)a3, a4);
 	case SYS_ipc_recv:
 		return sys_ipc_recv((void *) a1);
+	case SYS_time_msec:
+		return sys_time_msec();
+	case SYS_net_try_send:
+		return sys_net_try_send((void *) a1, a2);
+	case SYS_net_try_receive:
+		return sys_net_try_receive((void *) a1, (size_t *) a2);
 	default:
 		return -E_INVAL;
 	}
